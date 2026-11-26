@@ -2,9 +2,9 @@ services:
   db:
     image: postgres:15
     environment:
-      POSTGRES_USER: appuser
-      POSTGRES_PASSWORD: ChangeMe123
-      POSTGRES_DB: shop
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - dbdata:/var/lib/postgresql/data
 
@@ -16,10 +16,10 @@ services:
       PORT: 3000
       DB_HOST: db
       DB_PORT: 5432
-      DB_NAME: shop
-      DB_USER: appuser
-      DB_PASSWORD: ChangeMe123
-      JWT_SECRET: change_this_secret
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
     depends_on:
       - db
 
