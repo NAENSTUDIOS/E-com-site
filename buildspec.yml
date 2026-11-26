@@ -1,29 +1,81 @@
 version: 0.2
 
-env:
-  variables:
-    AWS_REGION: ap-south-1
-    ECR_REPO: ecom-app
-
 phases:
+  install:
+    runtime-versions:
+      nodejs: 18
+    commands:
+      # --- Terraform ---
+      - curl -fsSL https://releases.hashicorp.com/terraform/1.7.5/terraform_1.7.5_linux_amd64.zip -o terraform.zip
+      - unzip terraform.zip && mv terraform /usr/local/bin/ && rm terraform.zip
+      - terraform version
+
+      # --- Checkov ---
+      - pip3 install checkov
+      - checkov --version
+
+      # --- Hadolint ---
+      - curl -fsSL https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64 -o /usr/local/bin/hadolint
+      - chmod +x /usr/local/bin/hadolint
+      - hadolint --version
+
+      # --- Trivy ---
+      - curl -fsSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+      - trivy --version
+
   pre_build:
     commands:
-      - ACC=$(aws sts get-caller-identity --query Account --output text)
-      - REG=$ACC.dkr.ecr.$AWS_REGION.amazonaws.com
-      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REG
-      - TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c1-7)
+      # --- Terraform checks ---
+      - echo "Running terraform fmt check..."
+      - terraform fmt -check
+      - echo "Running terraform init..."
+      - terraform init -backend=false
+      - echo "Running terraform validate..."
+      - terraform validate
+
+      # --- Checkov IaC scan ---
+      - echo "Running Checkov scan..."
+      - checkov -d . --quiet
+
+      # --- Hadolint Dockerfile scan ---
+      - echo "Running Hadolint scan..."
+      - hadolint Dockerfile
+
+      # --- Node.js checks ---
+      - echo "Running npm ci..."
+      - npm ci
+      - echo "Checking server.js syntax..."
+      - node --check server.js
+      - echo "Running npm audit..."
+      - npm audit --audit-level=high
+
+      # --- ECR Login ---
+      - echo "Logging in to Amazon ECR..."
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
   build:
     commands:
-      - docker build -t $REG/$ECR_REPO:$TAG .
+      # --- Docker build ---
+      - echo "Building Docker image..."
+      - docker build -t $ECR_REPO:latest .
+
+      # --- Trivy image scan (must pass before push) ---
+      - echo "Running Trivy image scan..."
+      - trivy image --exit-code 1 --severity HIGH,CRITICAL $ECR_REPO:latest
+
+      # --- Tag and push to ECR ---
+      - echo "Pushing image to ECR..."
+      - docker tag $ECR_REPO:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:latest
+      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:latest
 
   post_build:
     commands:
-      - docker push $REG/$ECR_REPO:$TAG
-      - printf '{"ImageURI":"%s"}' $REG/$ECR_REPO:$TAG > imageDetail.json
+      - echo "Writing imagedefinitions.json..."
+      - printf '[{"name":"nasir-container","imageUri":"%s"}]' "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:latest" > imagedefinitions.json
+      - cat imagedefinitions.json
 
 artifacts:
   files:
-    - imageDetail.json
-    - taskdef.json
+    - imagedefinitions.json
     - appspec.yaml
+    - taskdef.json
