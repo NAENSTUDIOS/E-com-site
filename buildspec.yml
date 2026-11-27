@@ -20,7 +20,8 @@ phases:
       - curl -fsSL https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64 -o /usr/local/bin/hadolint
       - chmod +x /usr/local/bin/hadolint
       - hadolint --version
-      - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.58.0
+      - curl -fsSL https://github.com/aquasecurity/trivy/releases/download/v0.58.0/trivy_0.58.0_Linux-64bit.tar.gz -o /tmp/trivy.tar.gz
+      - tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin trivy && rm -f /tmp/trivy.tar.gz
       - trivy --version
 
   pre_build:
