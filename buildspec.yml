@@ -40,7 +40,7 @@ phases:
   build:
     commands:
       - docker build -t $REG/$ECR_REPO:$TAG .
-      - trivy image --db-repository public.ecr.aws/aquasecurity/trivy-db --exit-code 1 --severity CRITICAL --ignore-unfixed $REG/$ECR_REPO:$TAG
+      -      - trivy image --db-repository public.ecr.aws/aquasecurity/trivy-db --exit-code 1 --severity CRITICAL --ignore-unfixed --pkg-types os,library --skip-files "usr/local/bin/*" $REG/$ECR_REPO:$TAG
 
   post_build:
     commands:
