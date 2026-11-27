@@ -1,13 +1,13 @@
 {
-  "family": "ecom-task-ec2",
+  "family": "nasir-task",
   "networkMode": "bridge",
   "requiresCompatibilities": ["EC2"],
   "cpu": "512",
   "memory": "700",
-  "executionRoleArn": "arn:aws:iam::584860296694:role/ecsTaskExecutionRole",
+  "executionRoleArn": "arn:aws:iam::584860296694:role/nasir-task-exec-role",
   "containerDefinitions": [
     {
-      "name": "ecom-app",
+      "name": "app",
       "image": "<IMAGE1_NAME>",
       "essential": true,
       "portMappings": [
@@ -28,7 +28,7 @@
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
-          "awslogs-group": "/ecs/ecom-task-ec2",
+          "awslogs-group": "/ecs/nasir-task",
           "awslogs-region": "ap-south-1",
           "awslogs-stream-prefix": "ecs"
         }
